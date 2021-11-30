@@ -18,6 +18,19 @@ export const resolvers = {
         });
       });
     },
+    findNotes: (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        Notes.find()
+          .or([
+            { title: { $regex: input } },
+            { description: { $regex: input } },
+          ])
+          .exec((err, notes) => {
+            if (err) reject(err);
+            else resolve(notes);
+          });
+      });
+    },
   },
   Mutation: {
     createTag: (_: any, { input }) => {
@@ -43,6 +56,14 @@ export const resolvers = {
               })
             );
           }
+        });
+      });
+    },
+    updateTag: (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        Tags.updateOne({ id: input.id }, { name: input.name }, (err) => {
+          if (err) reject(err);
+          else resolve(input);
         });
       });
     },
@@ -82,6 +103,21 @@ export const resolvers = {
       } else {
         return createNote(input);
       }
+    },
+    updateNote: (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        var newNote: any = {};
+        if (input.title) newNote.title = input.title;
+        if (input.description) newNote.description = input.description;
+        if (input.color) newNote.color = input.color;
+        if (input.checkList) newNote.checkList = input.checkList;
+        if (input.tags) newNote.tags = input.tags;
+
+        Notes.findOneAndUpdate({ id: input.id }, newNote, (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        });
+      });
     },
   },
 };

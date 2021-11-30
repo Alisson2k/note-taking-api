@@ -6,8 +6,8 @@ A simple API to provide basic functionality for note-taking. It will be built in
 
 Next features to be made
 
-- [ ] Create and update tags
-- [ ] Create, update and list notes
+- [X] Create and update tags
+- [X] Create, update and list notes
 - [ ] Check/uncheck checklist items
 - [ ] Search notes by tags, status or text
 - [ ] Notes have a title, a color and can have either a description or a checklist
