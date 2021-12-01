@@ -8,8 +8,8 @@ Next features to be made
 
 - [X] Create and update tags
 - [X] Create, update and list notes
-- [ ] Check/uncheck checklist items
-- [ ] Search notes by tags, status or text
-- [ ] Notes have a title, a color and can have either a description or a checklist
-- [ ] Notes can be tagged with many tags
-- [ ] Notes can be archived or deleted
+- [X] Check/uncheck checklist items
+- [X] Search notes by tags, status or text
+- [X] Notes have a title, a color and can have either a description or a checklist
+- [X] Notes can be tagged with many tags
+- [X] Notes can be archived or deleted

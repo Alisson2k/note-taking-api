@@ -1,4 +1,4 @@
-import { Tags, Notes } from "../database";
+import { ArchivedNotes, Notes, Tags } from "../database";
 
 export const resolvers = {
   Query: {
@@ -21,6 +21,19 @@ export const resolvers = {
     findNotes: (_: any, { input }) => {
       return new Promise((resolve, reject) => {
         Notes.find()
+          .or([
+            { title: { $regex: input } },
+            { description: { $regex: input } },
+          ])
+          .exec((err, notes) => {
+            if (err) reject(err);
+            else resolve(notes);
+          });
+      });
+    },
+    findArchivedNotes: (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        ArchivedNotes.find()
           .or([
             { title: { $regex: input } },
             { description: { $regex: input } },
@@ -71,13 +84,16 @@ export const resolvers = {
       const createNote = (input) => {
         const newNote = new Notes({
           title: input.title,
-          description: input.description,
           color: input.color,
           tags: input.tags,
-          checkList: input.checkList,
         });
 
         newNote.id = newNote._id;
+        if (input.description) {
+          newNote.description = input.description;
+        } else {
+          newNote.checkList = input.checkList;
+        }
 
         return new Promise((resolve, reject) => {
           newNote.save((err) => {
@@ -89,13 +105,15 @@ export const resolvers = {
 
       if (input.tags && input.tags.length > 0) {
         return await Promise.all(
-          input.tags.map((tag) => {
-            return resolvers.Mutation.createTag(_, {
-              input: {
-                name: tag,
-              },
-            });
-          })
+          input.tags
+            .filter((tag) => tag.id == null)
+            .map((tag) => {
+              return resolvers.Mutation.createTag(_, {
+                input: {
+                  name: tag.name,
+                },
+              });
+            })
         ).then((values) => {
           input.tags = values;
           return createNote(input);
@@ -113,9 +131,57 @@ export const resolvers = {
         if (input.checkList) newNote.checkList = input.checkList;
         if (input.tags) newNote.tags = input.tags;
 
-        Notes.findOneAndUpdate({ id: input.id }, newNote, (err, result) => {
+        Notes.findByIdAndUpdate(input.id, newNote, (err, result) => {
           if (err) reject(err);
           else resolve(result);
+        });
+      });
+    },
+    deleteNote: (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        Notes.findByIdAndDelete(input, (err, result) => {
+          if (err) {
+            reject(err);
+          }
+
+          if (result == null) {
+            ArchivedNotes.findByIdAndDelete(input, (err, result) => {
+              if (err) reject(err);
+              else resolve(result);
+            });
+          } else {
+            resolve(result);
+          }
+        });
+      });
+    },
+    archiveNote: async (_: any, { input }) => {
+      return new Promise((resolve, reject) => {
+        Notes.findByIdAndDelete(input, (err, result) => {
+          if (err) {
+            reject(err);
+          } else if (result != null) {
+            const newNote = new ArchivedNotes({
+              title: result.title,
+              color: result.color,
+              tags: result.tags,
+            });
+
+            if (result.description) {
+              newNote.description = result.description;
+            } else {
+              newNote.checkList = result.checkList;
+            }
+
+            newNote.id = newNote._id;
+
+            newNote.save((err, res) => {
+              if (err) reject(err);
+              else resolve(res);
+            });
+          } else {
+            resolve(result);
+          }
         });
       });
     },

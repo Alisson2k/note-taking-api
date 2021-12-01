@@ -40,5 +40,6 @@ connectMongoose();
 
 const Tags = mongoose.model("tags", tagSchema);
 const Notes = mongoose.model("notes", noteSchema);
+const ArchivedNotes = mongoose.model("archived-notes", noteSchema);
 
-export { Tags, Notes };
+export { ArchivedNotes, Notes, Tags };
