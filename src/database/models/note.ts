@@ -17,6 +17,9 @@ export const noteSchema = new mongoose.Schema(
     tags: {
       type: Array,
     },
+    user: {
+      type: String
+    }
   },
   { timestamps: true }
 );

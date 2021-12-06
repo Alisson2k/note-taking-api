@@ -1,26 +1,34 @@
-import { ArchivedNotes, Notes, Tags } from "../database";
+import { AuthenticationError } from "apollo-server-express";
+import { ArchivedNotes, Notes, Tags, Users } from "../database";
+import jwt from "jsonwebtoken";
 
 export const resolvers = {
   Query: {
-    getAllTags: (_: any) => {
+    getAllTags: (_, args, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
-        Tags.find((err, tags) => {
+        Tags.find({ user: context.user }, (err, tags) => {
           if (err) reject(err);
           else resolve(tags);
         });
       });
     },
-    getAllNotes: (_: any) => {
+    getAllNotes: (_: any, args, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
-        Notes.find((err, notes) => {
+        Notes.find({ user: context.user }, (err, notes) => {
           if (err) reject(err);
           else resolve(notes);
         });
       });
     },
-    findNotes: (_: any, { input }) => {
+    findNotes: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
-        Notes.find()
+        Notes.find({ user: context.user })
           .or([
             { title: { $regex: input } },
             { description: { $regex: input } },
@@ -31,9 +39,11 @@ export const resolvers = {
           });
       });
     },
-    findArchivedNotes: (_: any, { input }) => {
+    findArchivedNotes: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
-        ArchivedNotes.find()
+        ArchivedNotes.find({ user: context.user })
           .or([
             { title: { $regex: input } },
             { description: { $regex: input } },
@@ -46,9 +56,11 @@ export const resolvers = {
     },
   },
   Mutation: {
-    createTag: (_: any, { input }) => {
+    createTag: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
-        Tags.findOne({ name: input.name }, (err, doc) => {
+        Tags.findOne({ name: input.name, user: context.user }, (err, doc) => {
           if (err) {
             reject(err);
           } else if (doc) {
@@ -56,6 +68,7 @@ export const resolvers = {
           } else {
             const newTag = new Tags({
               name: input.name,
+              user: context.user,
             });
 
             newTag.id = newTag._id;
@@ -72,7 +85,9 @@ export const resolvers = {
         });
       });
     },
-    updateTag: (_: any, { input }) => {
+    updateTag: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
         Tags.updateOne({ id: input.id }, { name: input.name }, (err) => {
           if (err) reject(err);
@@ -80,12 +95,15 @@ export const resolvers = {
         });
       });
     },
-    createNote: async (_: any, { input }) => {
+    createNote: async (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       const createNote = (input) => {
         const newNote = new Notes({
           title: input.title,
           color: input.color,
           tags: input.tags,
+          user: context.user,
         });
 
         newNote.id = newNote._id;
@@ -108,11 +126,15 @@ export const resolvers = {
           input.tags
             .filter((tag) => tag.id == null)
             .map((tag) => {
-              return resolvers.Mutation.createTag(_, {
-                input: {
-                  name: tag.name,
+              return resolvers.Mutation.createTag(
+                _,
+                {
+                  input: {
+                    name: tag.name,
+                  },
                 },
-              });
+                context
+              );
             })
         ).then((values) => {
           input.tags = values;
@@ -122,7 +144,9 @@ export const resolvers = {
         return createNote(input);
       }
     },
-    updateNote: (_: any, { input }) => {
+    updateNote: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
         var newNote: any = {};
         if (input.title) newNote.title = input.title;
@@ -137,7 +161,9 @@ export const resolvers = {
         });
       });
     },
-    deleteNote: (_: any, { input }) => {
+    deleteNote: (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
         Notes.findByIdAndDelete(input, (err, result) => {
           if (err) {
@@ -155,7 +181,9 @@ export const resolvers = {
         });
       });
     },
-    archiveNote: async (_: any, { input }) => {
+    archiveNote: async (_: any, { input }, context) => {
+      if (!context.user) throw new AuthenticationError("You must be logged in");
+
       return new Promise((resolve, reject) => {
         Notes.findByIdAndDelete(input, (err, result) => {
           if (err) {
@@ -165,6 +193,7 @@ export const resolvers = {
               title: result.title,
               color: result.color,
               tags: result.tags,
+              user: context.user
             });
 
             if (result.description) {
@@ -181,6 +210,41 @@ export const resolvers = {
             });
           } else {
             resolve(result);
+          }
+        });
+      });
+    },
+    createUser: (_: any, { input }, context) => {
+      return new Promise((resolve, reject) => {
+        const newUser = new Users({
+          name: input.name,
+          email: input.email,
+          password: input.password,
+        });
+
+        newUser.id = newUser._id;
+
+        newUser.save((err, res) => {
+          if (err) reject(false);
+          else resolve(true);
+        });
+      });
+    },
+    login: (_: any, { email, password }) => {
+      return new Promise((resolve, reject) => {
+        Users.findOne({ email }, async (err, user) => {
+          if (err) reject(err);
+          if (await user.matchPassword(password)) {
+            user.token = jwt.sign(
+              { id: user._id },
+              process.env.SECRET,
+              {
+                expiresIn: "1h",
+              }
+            );
+            resolve(user);
+          } else {
+            resolve(null);
           }
         });
       });

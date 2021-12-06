@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { tagSchema } from "./models/tag";
 import { noteSchema } from "./models/note";
+import { userSchema } from "./models/user";
 import { logger } from "../utils/logger";
 
 const MONGO_URL = "mongodb://localhost:27017/note-taking";
@@ -41,5 +42,6 @@ connectMongoose();
 const Tags = mongoose.model("tags", tagSchema);
 const Notes = mongoose.model("notes", noteSchema);
 const ArchivedNotes = mongoose.model("archived-notes", noteSchema);
+const Users = mongoose.model("users", userSchema);
 
-export { ArchivedNotes, Notes, Tags };
+export { ArchivedNotes, Notes, Tags, Users };

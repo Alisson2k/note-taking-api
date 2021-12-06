@@ -1,9 +1,29 @@
 import { gql } from "apollo-server-express";
 
 export const typeDefs = gql`
+  type User {
+    id: ID
+    name: String
+    email: String
+    password: String
+  }
+
+  input UserInput {
+    name: String
+    email: String
+    password: String
+  }
+  
+  type AuthUser {
+    name: String
+    email: String
+    token: String
+  }
+
   type Tag {
     id: ID
     name: String
+    user: String
     createdAt: String
     updatedAt: String
   }
@@ -20,17 +40,7 @@ export const typeDefs = gql`
     color: Color
     checkList: [CheckList]
     tags: [Tag]
-    createdAt: String
-    updatedAt: String
-  }
-
-  type Note {
-    id: ID
-    title: String
-    description: String
-    color: Color
-    checkList: [CheckList]
-    tags: [Tag]
+    user: String
     createdAt: String
     updatedAt: String
   }
@@ -87,5 +97,7 @@ export const typeDefs = gql`
     updateNote(input: NoteInput): Note
     deleteNote(input: ID): Note
     archiveNote(input: ID): Note
+    createUser(input: UserInput): Boolean
+    login(email: String, password: String): AuthUser
   }
 `;
